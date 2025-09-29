@@ -5,6 +5,7 @@ import (
 	"net/http"
 	entity "scheduler/application/entity"
 	"scheduler/database"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -101,4 +102,80 @@ func (s *Server) CreateTask(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, response)
 
+}
+
+func (s *Server) ListTasts(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
+	status := c.Query("status")
+
+	offset := (page - 1) * size
+
+	tasks, err := s.DB.ListTasks(c, database.ListTasksParams{
+		Column1: status,
+		Limit:   int32(size),
+		Offset:  int32(offset),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
+		return
+	}
+
+	var taskResponses []entity.TaskResponse
+	for _, task := range tasks {
+		response, err := taskToResponse(task)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to format task"})
+			return
+		}
+		taskResponses = append(taskResponses, response)
+	}
+
+	response := entity.ListTasksResponse{
+		Tasks: taskResponses,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func (s *Server) CancelTask(c *gin.Context) {
+	idParam := c.Param("id")
+	var pguuid pgtype.UUID
+	err := pguuid.Scan(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
+		return
+	}
+
+	task, err := s.DB.CancelTask(c, pguuid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cancel task"})
+		return
+	}
+
+	response, err := taskToResponse(task)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to format response"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func (s *Server) ListTaskResults(c *gin.Context) {
+	idParam := c.Param("id")
+	var pguuid pgtype.UUID
+	err := pguuid.Scan(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
+		return
+	}
+
+	results, err := s.DB.ListTaskResults(c, pguuid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch task results"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"results": results})
 }

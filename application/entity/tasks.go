@@ -28,3 +28,7 @@ type UpdateTaskRequest struct {
 	Trigger *TriggerData `json:"trigger"`
 	Action  *ActionData  `json:"action"`
 }
+
+type ListTasksResponse struct {
+	Tasks []TaskResponse `json:"tasks"`
+}
