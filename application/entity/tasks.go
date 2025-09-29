@@ -3,7 +3,7 @@ package entity
 import (
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type CreateTaskReq struct {
@@ -13,7 +13,7 @@ type CreateTaskReq struct {
 }
 
 type TaskResponse struct {
-	ID        uuid.UUID   `json:"id"`
+	ID        pgtype.UUID `json:"id"`
 	Name      string      `json:"name"`
 	Trigger   TriggerData `json:"trigger"`
 	Action    ActionData  `json:"action"`
