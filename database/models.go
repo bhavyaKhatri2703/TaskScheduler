@@ -9,14 +9,19 @@ import (
 )
 
 type Task struct {
-	ID        pgtype.UUID
-	Name      string
-	Trigger   []byte
-	Action    []byte
-	Status    string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
-	NextRun   pgtype.Timestamptz
+	ID              pgtype.UUID
+	Name            string
+	TriggerType     string
+	TriggerDatetime pgtype.Timestamptz
+	TriggerCron     pgtype.Text
+	ActionMethod    string
+	ActionUrl       string
+	ActionHeaders   []byte
+	ActionPayload   []byte
+	Status          string
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	NextRun         pgtype.Timestamptz
 }
 
 type TaskResult struct {

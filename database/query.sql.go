@@ -16,7 +16,7 @@ UPDATE tasks
 SET status = 'cancelled',
     updated_at = now()
 WHERE id = $1
-RETURNING id, name, trigger, action, status, created_at, updated_at, next_run
+RETURNING id, name, trigger_type, trigger_datetime, trigger_cron, action_method, action_url, action_headers, action_payload, status, created_at, updated_at, next_run
 `
 
 func (q *Queries) CancelTask(ctx context.Context, id pgtype.UUID) (Task, error) {
@@ -25,8 +25,13 @@ func (q *Queries) CancelTask(ctx context.Context, id pgtype.UUID) (Task, error) 
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.Trigger,
-		&i.Action,
+		&i.TriggerType,
+		&i.TriggerDatetime,
+		&i.TriggerCron,
+		&i.ActionMethod,
+		&i.ActionUrl,
+		&i.ActionHeaders,
+		&i.ActionPayload,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -36,24 +41,34 @@ func (q *Queries) CancelTask(ctx context.Context, id pgtype.UUID) (Task, error) 
 }
 
 const createTask = `-- name: CreateTask :one
-INSERT INTO tasks (name, "trigger", action, status, next_run)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, name, trigger, action, status, created_at, updated_at, next_run
+INSERT INTO tasks (name, trigger_type, trigger_datetime, trigger_cron, action_method, action_url, action_headers, action_payload, status, next_run)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, name, trigger_type, trigger_datetime, trigger_cron, action_method, action_url, action_headers, action_payload, status, created_at, updated_at, next_run
 `
 
 type CreateTaskParams struct {
-	Name    string
-	Trigger []byte
-	Action  []byte
-	Status  string
-	NextRun pgtype.Timestamptz
+	Name            string
+	TriggerType     string
+	TriggerDatetime pgtype.Timestamptz
+	TriggerCron     pgtype.Text
+	ActionMethod    string
+	ActionUrl       string
+	ActionHeaders   []byte
+	ActionPayload   []byte
+	Status          string
+	NextRun         pgtype.Timestamptz
 }
 
 func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error) {
 	row := q.db.QueryRow(ctx, createTask,
 		arg.Name,
-		arg.Trigger,
-		arg.Action,
+		arg.TriggerType,
+		arg.TriggerDatetime,
+		arg.TriggerCron,
+		arg.ActionMethod,
+		arg.ActionUrl,
+		arg.ActionHeaders,
+		arg.ActionPayload,
 		arg.Status,
 		arg.NextRun,
 	)
@@ -61,8 +76,13 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.Trigger,
-		&i.Action,
+		&i.TriggerType,
+		&i.TriggerDatetime,
+		&i.TriggerCron,
+		&i.ActionMethod,
+		&i.ActionUrl,
+		&i.ActionHeaders,
+		&i.ActionPayload,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -72,7 +92,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 }
 
 const getTask = `-- name: GetTask :one
-SELECT id, name, trigger, action, status, created_at, updated_at, next_run FROM tasks
+SELECT id, name, trigger_type, trigger_datetime, trigger_cron, action_method, action_url, action_headers, action_payload, status, created_at, updated_at, next_run FROM tasks
 WHERE id = $1
 `
 
@@ -82,8 +102,13 @@ func (q *Queries) GetTask(ctx context.Context, id pgtype.UUID) (Task, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.Trigger,
-		&i.Action,
+		&i.TriggerType,
+		&i.TriggerDatetime,
+		&i.TriggerCron,
+		&i.ActionMethod,
+		&i.ActionUrl,
+		&i.ActionHeaders,
+		&i.ActionPayload,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -129,7 +154,7 @@ func (q *Queries) ListTaskResults(ctx context.Context, taskID pgtype.UUID) ([]Ta
 }
 
 const listTasks = `-- name: ListTasks :many
-SELECT id, name, trigger, action, status, created_at, updated_at, next_run FROM tasks
+SELECT id, name, trigger_type, trigger_datetime, trigger_cron, action_method, action_url, action_headers, action_payload, status, created_at, updated_at, next_run FROM tasks
 WHERE ($1::TEXT IS NULL OR status = $1)
 LIMIT $2 OFFSET $3
 `
@@ -152,8 +177,13 @@ func (q *Queries) ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, e
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.Trigger,
-			&i.Action,
+			&i.TriggerType,
+			&i.TriggerDatetime,
+			&i.TriggerCron,
+			&i.ActionMethod,
+			&i.ActionUrl,
+			&i.ActionHeaders,
+			&i.ActionPayload,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -172,30 +202,45 @@ func (q *Queries) ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, e
 const updateTask = `-- name: UpdateTask :one
 UPDATE tasks
 SET name = COALESCE($2, name),
-    "trigger" = COALESCE($3, "trigger"),
-    action = COALESCE($4, action),
-    status = COALESCE($5, status),
-    next_run = COALESCE($6, next_run),
+    trigger_type = COALESCE($3, trigger_type),
+    trigger_datetime = COALESCE($4, trigger_datetime),
+    trigger_cron = COALESCE($5, trigger_cron),
+    action_method = COALESCE($6, action_method),
+    action_url = COALESCE($7, action_url),
+    action_headers = COALESCE($8, action_headers),
+    action_payload = COALESCE($9, action_payload),
+    status = COALESCE($10, status),
+    next_run = COALESCE($11, next_run),
     updated_at = now()
 WHERE id = $1
-RETURNING id, name, trigger, action, status, created_at, updated_at, next_run
+RETURNING id, name, trigger_type, trigger_datetime, trigger_cron, action_method, action_url, action_headers, action_payload, status, created_at, updated_at, next_run
 `
 
 type UpdateTaskParams struct {
-	ID      pgtype.UUID
-	Name    string
-	Trigger []byte
-	Action  []byte
-	Status  string
-	NextRun pgtype.Timestamptz
+	ID              pgtype.UUID
+	Name            string
+	TriggerType     string
+	TriggerDatetime pgtype.Timestamptz
+	TriggerCron     pgtype.Text
+	ActionMethod    string
+	ActionUrl       string
+	ActionHeaders   []byte
+	ActionPayload   []byte
+	Status          string
+	NextRun         pgtype.Timestamptz
 }
 
 func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, error) {
 	row := q.db.QueryRow(ctx, updateTask,
 		arg.ID,
 		arg.Name,
-		arg.Trigger,
-		arg.Action,
+		arg.TriggerType,
+		arg.TriggerDatetime,
+		arg.TriggerCron,
+		arg.ActionMethod,
+		arg.ActionUrl,
+		arg.ActionHeaders,
+		arg.ActionPayload,
 		arg.Status,
 		arg.NextRun,
 	)
@@ -203,8 +248,13 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, e
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.Trigger,
-		&i.Action,
+		&i.TriggerType,
+		&i.TriggerDatetime,
+		&i.TriggerCron,
+		&i.ActionMethod,
+		&i.ActionUrl,
+		&i.ActionHeaders,
+		&i.ActionPayload,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
