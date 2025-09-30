@@ -43,3 +43,11 @@ SET status = 'cancelled',
     updated_at = now()
 WHERE id = $1
 RETURNING *;
+
+
+-- name: GetTasksToRun :many
+SELECT *
+FROM tasks
+WHERE status = 'scheduled'
+  AND next_run <= $1
+ORDER BY next_run ASC
