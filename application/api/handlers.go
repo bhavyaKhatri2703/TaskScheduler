@@ -190,4 +190,122 @@ func (s *Server) ListTaskResults(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"results": results})
 }
 
-//add update task handler
+func (s *Server) UpdateTask(c *gin.Context) {
+	idParam := c.Param("id")
+	var pguuid pgtype.UUID
+	err := pguuid.Scan(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
+		return
+	}
+
+	var req entity.UpdateTaskRequest
+	err = c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	currTask, err := s.DB.GetTask(c, pguuid)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
+	params := database.UpdateTaskParams{
+		ID:              pguuid,
+		Name:            currTask.Name,
+		TriggerType:     currTask.TriggerType,
+		TriggerDatetime: currTask.TriggerDatetime,
+		TriggerCron:     currTask.TriggerCron,
+		ActionMethod:    currTask.ActionMethod,
+		ActionUrl:       currTask.ActionUrl,
+		ActionHeaders:   currTask.ActionHeaders,
+		ActionPayload:   currTask.ActionPayload,
+		Status:          currTask.Status,
+		NextRun:         currTask.NextRun,
+	}
+
+	if req.Name != nil {
+		params.Name = *req.Name
+	}
+
+	if req.Trigger != nil {
+		params.TriggerType = req.Trigger.Type
+
+		if req.Trigger.Type == "one-off" {
+			if req.Trigger.DateTime == "" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "datetime is required for one-off tasks"})
+				return
+			}
+
+			dateTime, err := StringToTimestamptz(req.Trigger.DateTime)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid datetime format"})
+				return
+			}
+
+			params.TriggerDatetime = dateTime
+			params.NextRun = dateTime
+			params.TriggerCron = pgtype.Text{Valid: false}
+		} else if req.Trigger.Type == "cron" {
+			if req.Trigger.Cron == "" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "cron expression is required for cron tasks"})
+				return
+			}
+
+			nextTime, err := NextCronTime(req.Trigger.Cron)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid cron expression: " + err.Error()})
+				return
+			}
+
+			params.TriggerCron = pgtype.Text{String: req.Trigger.Cron, Valid: true}
+			params.TriggerDatetime = pgtype.Timestamptz{Valid: false}
+			params.NextRun = pgtype.Timestamptz{Time: *nextTime, Valid: true}
+		}
+
+	}
+
+	if req.Action != nil {
+		if req.Action.Method != "" {
+			params.ActionMethod = req.Action.Method
+		}
+
+		if req.Action.URL != "" {
+			params.ActionUrl = req.Action.URL
+		}
+
+		if req.Action.Headers != nil {
+			headersJSON, err := json.Marshal(req.Action.Headers)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process headers"})
+				return
+			}
+			params.ActionHeaders = headersJSON
+		}
+
+		if req.Action.Payload != nil {
+			payloadJSON, err := json.Marshal(req.Action.Payload)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process payload"})
+				return
+			}
+			params.ActionPayload = payloadJSON
+		}
+	}
+
+	updatedTask, err := s.DB.UpdateTask(c, params)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update task: " + err.Error()})
+		return
+	}
+
+	response, err := taskToResponse(updatedTask)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to format response"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
