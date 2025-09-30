@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/robfig/cron/v3"
 )
 
 func taskToResponse(task database.Task) (entity.TaskResponse, error) {
@@ -57,4 +58,14 @@ func StringToPgText(s string) pgtype.Text {
 		String: s,
 		Valid:  true,
 	}
+}
+
+func NextCronTime(expr string) (*time.Time, error) {
+	schedule, err := cron.ParseStandard(expr)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC()
+	next := schedule.Next(now)
+	return &next, nil
 }

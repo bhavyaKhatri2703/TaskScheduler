@@ -49,6 +49,16 @@ func (s *Server) CreateTask(c *gin.Context) {
 	cron := StringToPgText(req.Trigger.Cron)
 	reqHeaders, _ := json.Marshal(req.Action.Headers)
 
+	var nextRun pgtype.Timestamptz
+
+	if req.Trigger.Type == "one-off" && req.Trigger.DateTime != "" {
+		nextRun = dateTime
+	} else if req.Trigger.Type == "cron" && req.Trigger.Cron != "" {
+		if t, err := NextCronTime(req.Trigger.Cron); err == nil {
+			nextRun = pgtype.Timestamptz{Time: *t, Valid: true}
+		}
+	}
+
 	task, err := s.DB.CreateTask(c, database.CreateTaskParams{
 		Name:            req.Name,
 		TriggerType:     req.Trigger.Type,
@@ -59,7 +69,7 @@ func (s *Server) CreateTask(c *gin.Context) {
 		ActionHeaders:   reqHeaders,
 		ActionPayload:   req.Action.Payload,
 		Status:          "scheduled",
-		// add next_run
+		NextRun:         nextRun,
 	})
 
 	if err != nil {
@@ -179,3 +189,5 @@ func (s *Server) ListTaskResults(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"results": results})
 }
+
+//add update task handler
