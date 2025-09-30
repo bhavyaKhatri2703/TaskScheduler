@@ -197,7 +197,8 @@ func (q *Queries) ListTaskResults(ctx context.Context, taskID pgtype.UUID) ([]Ta
 
 const listTasks = `-- name: ListTasks :many
 SELECT id, name, trigger_type, trigger_datetime, trigger_cron, action_method, action_url, action_headers, action_payload, status, created_at, updated_at, next_run FROM tasks
-WHERE ($1::TEXT IS NULL OR status = $1)
+WHERE ($1::TEXT IS NULL OR $1 = '' OR status = $1)
+ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
 `
 

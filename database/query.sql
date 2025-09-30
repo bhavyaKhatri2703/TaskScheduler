@@ -11,7 +11,8 @@ WHERE id = $1;
 
 -- name: ListTasks :many
 SELECT * FROM tasks
-WHERE ($1::TEXT IS NULL OR status = $1)
+WHERE ($1::TEXT IS NULL OR $1 = '' OR status = $1)
+ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
 
 
