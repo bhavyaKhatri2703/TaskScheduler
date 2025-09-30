@@ -6,7 +6,7 @@ import (
 	"scheduler/database"
 	"time"
 
-	"github.com/jackc/pgx/pgtype"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Scheduler struct {

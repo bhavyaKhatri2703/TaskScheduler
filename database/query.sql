@@ -50,4 +50,4 @@ SELECT *
 FROM tasks
 WHERE status = 'scheduled'
   AND next_run <= $1
-ORDER BY next_run ASC
+ORDER BY next_run ASC;

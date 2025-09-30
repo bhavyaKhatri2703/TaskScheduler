@@ -117,6 +117,48 @@ func (q *Queries) GetTask(ctx context.Context, id pgtype.UUID) (Task, error) {
 	return i, err
 }
 
+const getTasksToRun = `-- name: GetTasksToRun :many
+SELECT id, name, trigger_type, trigger_datetime, trigger_cron, action_method, action_url, action_headers, action_payload, status, created_at, updated_at, next_run
+FROM tasks
+WHERE status = 'scheduled'
+  AND next_run <= $1
+ORDER BY next_run ASC
+`
+
+func (q *Queries) GetTasksToRun(ctx context.Context, nextRun pgtype.Timestamptz) ([]Task, error) {
+	rows, err := q.db.Query(ctx, getTasksToRun, nextRun)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Task
+	for rows.Next() {
+		var i Task
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.TriggerType,
+			&i.TriggerDatetime,
+			&i.TriggerCron,
+			&i.ActionMethod,
+			&i.ActionUrl,
+			&i.ActionHeaders,
+			&i.ActionPayload,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.NextRun,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTaskResults = `-- name: ListTaskResults :many
 SELECT id, task_id, run_at, status_code, success, response_headers, response_body, error_message, duration_ms, created_at FROM task_results
 WHERE task_id = $1
