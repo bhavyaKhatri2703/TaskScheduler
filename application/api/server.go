@@ -28,3 +28,13 @@ func NewServer(db *database.Queries) *Server {
 	}
 	return s
 }
+
+func (s *Server) SetRoutes() {
+	r := s.Router
+	r.POST("/tasks", s.CreateTask)
+	r.GET("/tasks", s.ListTasts)
+	r.GET("/tasks/{id}", s.GetTask)
+	r.PUT("/tasks/{id}", s.UpdateTask)
+	r.DELETE("/tasks/{id}", s.CancelTask)
+	r.GET("/tasks/{id}/results", s.ListTaskResults)
+}
