@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	entity "scheduler/application/entity"
 	"scheduler/database"
@@ -171,7 +172,6 @@ func (s *Server) CancelTask(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
-
 func (s *Server) ListTaskResults(c *gin.Context) {
 	idParam := c.Param("id")
 	var pguuid pgtype.UUID
@@ -187,7 +187,17 @@ func (s *Server) ListTaskResults(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"results": results})
+	var response []entity.TaskResultResponse
+	for _, result := range results {
+		resultResponse, err := taskResultToResponse(result)
+		if err != nil {
+			log.Printf("Error converting result: %v", err)
+			continue
+		}
+		response = append(response, resultResponse)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"results": response})
 }
 
 func (s *Server) UpdateTask(c *gin.Context) {

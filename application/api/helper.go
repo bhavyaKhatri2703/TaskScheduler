@@ -69,3 +69,34 @@ func NextCronTime(expr string) (*time.Time, error) {
 	next := schedule.Next(now)
 	return &next, nil
 }
+
+func taskResultToResponse(result database.TaskResult) (entity.TaskResultResponse, error) {
+	response := entity.TaskResultResponse{
+		ID:         result.ID,
+		TaskID:     result.TaskID,
+		RunAt:      result.RunAt.Time,
+		StatusCode: result.StatusCode,
+		Success:    result.Success,
+		DurationMs: result.DurationMs,
+		CreatedAt:  result.CreatedAt.Time,
+	}
+
+	if result.ResponseHeaders != nil {
+		var headers map[string]interface{}
+		if err := json.Unmarshal(result.ResponseHeaders, &headers); err == nil {
+			response.ResponseHeaders = headers
+		}
+	}
+	if result.ResponseBody != nil {
+		var body interface{}
+		if err := json.Unmarshal(result.ResponseBody, &body); err == nil {
+			response.ResponseBody = body
+		}
+	}
+
+	if result.ErrorMessage.Valid {
+		response.ErrorMessage = result.ErrorMessage.String
+	}
+
+	return response, nil
+}
