@@ -52,3 +52,17 @@ FROM tasks
 WHERE status = 'scheduled'
   AND next_run <= $1
 ORDER BY next_run ASC;
+
+
+-- name: CreateTaskResult :one
+INSERT INTO task_results (task_id,run_at,status_code,success,response_headers,response_body,error_message,duration_ms,created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
+RETURNING *;
+
+
+-- name: UpdateTaskStatus :one
+UPDATE tasks
+SET status = $2,
+    updated_at = now()
+WHERE id = $1
+RETURNING *;

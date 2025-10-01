@@ -91,6 +91,50 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 	return i, err
 }
 
+const createTaskResult = `-- name: CreateTaskResult :one
+INSERT INTO task_results (task_id,run_at,status_code,success,response_headers,response_body,error_message,duration_ms,created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
+RETURNING id, task_id, run_at, status_code, success, response_headers, response_body, error_message, duration_ms, created_at
+`
+
+type CreateTaskResultParams struct {
+	TaskID          pgtype.UUID
+	RunAt           pgtype.Timestamptz
+	StatusCode      int32
+	Success         bool
+	ResponseHeaders []byte
+	ResponseBody    []byte
+	ErrorMessage    pgtype.Text
+	DurationMs      int32
+}
+
+func (q *Queries) CreateTaskResult(ctx context.Context, arg CreateTaskResultParams) (TaskResult, error) {
+	row := q.db.QueryRow(ctx, createTaskResult,
+		arg.TaskID,
+		arg.RunAt,
+		arg.StatusCode,
+		arg.Success,
+		arg.ResponseHeaders,
+		arg.ResponseBody,
+		arg.ErrorMessage,
+		arg.DurationMs,
+	)
+	var i TaskResult
+	err := row.Scan(
+		&i.ID,
+		&i.TaskID,
+		&i.RunAt,
+		&i.StatusCode,
+		&i.Success,
+		&i.ResponseHeaders,
+		&i.ResponseBody,
+		&i.ErrorMessage,
+		&i.DurationMs,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getTask = `-- name: GetTask :one
 SELECT id, name, trigger_type, trigger_datetime, trigger_cron, action_method, action_url, action_headers, action_payload, status, created_at, updated_at, next_run FROM tasks
 WHERE id = $1
@@ -287,6 +331,40 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, e
 		arg.Status,
 		arg.NextRun,
 	)
+	var i Task
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.TriggerType,
+		&i.TriggerDatetime,
+		&i.TriggerCron,
+		&i.ActionMethod,
+		&i.ActionUrl,
+		&i.ActionHeaders,
+		&i.ActionPayload,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.NextRun,
+	)
+	return i, err
+}
+
+const updateTaskStatus = `-- name: UpdateTaskStatus :one
+UPDATE tasks
+SET status = $2,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, name, trigger_type, trigger_datetime, trigger_cron, action_method, action_url, action_headers, action_payload, status, created_at, updated_at, next_run
+`
+
+type UpdateTaskStatusParams struct {
+	ID     pgtype.UUID
+	Status string
+}
+
+func (q *Queries) UpdateTaskStatus(ctx context.Context, arg UpdateTaskStatusParams) (Task, error) {
+	row := q.db.QueryRow(ctx, updateTaskStatus, arg.ID, arg.Status)
 	var i Task
 	err := row.Scan(
 		&i.ID,
