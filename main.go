@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"scheduler/application/api"
 	"scheduler/database"
+	_ "scheduler/docs"
 	"scheduler/scheduler"
 	"scheduler/workers"
 
@@ -14,7 +16,15 @@ import (
 
 func ConnectDB() (*database.Queries, error) {
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, "user=postgres password=postgres dbname=scheduler sslmode=disable")
+
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_NAME"),
+	)
+	pool, err := pgxpool.New(ctx, dsn)
 
 	if err != nil {
 		return nil, err

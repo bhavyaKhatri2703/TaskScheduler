@@ -34,3 +34,4 @@ go.work.sum
 database/models.go
 database/db.go
 database/query.sql.go
+docs/
