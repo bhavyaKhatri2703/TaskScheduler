@@ -115,7 +115,7 @@ func (s *Server) CreateTask(c *gin.Context) {
 
 }
 
-func (s *Server) ListTasts(c *gin.Context) {
+func (s *Server) ListTasks(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
 	status := c.Query("status")

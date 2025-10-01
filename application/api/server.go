@@ -32,7 +32,7 @@ func NewServer(db *database.Queries) *Server {
 func (s *Server) SetRoutes() {
 	r := s.Router
 	r.POST("/tasks", s.CreateTask)
-	r.GET("/tasks", s.ListTasts)
+	r.GET("/tasks", s.ListTasks)
 	r.GET("/tasks/:id", s.GetTask)
 	r.PUT("/tasks/:id", s.UpdateTask)
 	r.DELETE("/tasks/:id", s.CancelTask)
