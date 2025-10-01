@@ -5,17 +5,18 @@
 ```bash
 sqlc generate
 ```
-###  2. Start services with Docker Compose
 
-```bash
-docker-compose up -d
-
-```
-###  3. Generate Swagger Documentation
+###  2. Generate Swagger Documentation
 
 ```bash
 go install github.com/swaggo/swag/cmd/swag@latest
 swag init
+```
+###  3. Start services with Docker Compose
+
+```bash
+docker-compose up -d
+
 ```
 ###  4. Access Swagger UI
 
