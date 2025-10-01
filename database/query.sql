@@ -66,3 +66,7 @@ SET status = $2,
     updated_at = now()
 WHERE id = $1
 RETURNING *;
+
+
+-- name: ListAllTaskResults :many
+SELECT * FROM task_results;

@@ -203,6 +203,41 @@ func (q *Queries) GetTasksToRun(ctx context.Context, nextRun pgtype.Timestamptz)
 	return items, nil
 }
 
+const listAllTaskResults = `-- name: ListAllTaskResults :many
+SELECT id, task_id, run_at, status_code, success, response_headers, response_body, error_message, duration_ms, created_at FROM task_results
+`
+
+func (q *Queries) ListAllTaskResults(ctx context.Context) ([]TaskResult, error) {
+	rows, err := q.db.Query(ctx, listAllTaskResults)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TaskResult
+	for rows.Next() {
+		var i TaskResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskID,
+			&i.RunAt,
+			&i.StatusCode,
+			&i.Success,
+			&i.ResponseHeaders,
+			&i.ResponseBody,
+			&i.ErrorMessage,
+			&i.DurationMs,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTaskResults = `-- name: ListTaskResults :many
 SELECT id, task_id, run_at, status_code, success, response_headers, response_body, error_message, duration_ms, created_at FROM task_results
 WHERE task_id = $1

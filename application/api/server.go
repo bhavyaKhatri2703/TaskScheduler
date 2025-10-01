@@ -37,4 +37,6 @@ func (s *Server) SetRoutes() {
 	r.PUT("/tasks/:id", s.UpdateTask)
 	r.DELETE("/tasks/:id", s.CancelTask)
 	r.GET("/tasks/:id/results", s.ListTaskResults)
+	r.GET("/results", s.ListAllTasksResults)
+
 }

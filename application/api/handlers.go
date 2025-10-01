@@ -319,3 +319,23 @@ func (s *Server) UpdateTask(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
+
+func (s *Server) ListAllTasksResults(c *gin.Context) {
+	results, err := s.DB.ListAllTaskResults(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch task results"})
+		return
+	}
+
+	var response []entity.TaskResultResponse
+	for _, result := range results {
+		resultResponse, err := taskResultToResponse(result)
+		if err != nil {
+			log.Printf("Error converting result: %v", err)
+			continue
+		}
+		response = append(response, resultResponse)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"results": response})
+}
