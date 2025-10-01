@@ -1,6 +1,5 @@
 
-## Usage/Examples
-
+## Setup Guide
 ###  1. Generate Go code from SQL queries
 
 ```bash
