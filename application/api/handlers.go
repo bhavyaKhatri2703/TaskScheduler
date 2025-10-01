@@ -13,6 +13,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// @Summary Get a task by ID
+// @Description Returns task details by task ID
+// @Tags Tasks
+// @Param id path string true "Task ID"
+// @Success 202 {object} entity.TaskResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tasks/{id} [get]
 func (s *Server) GetTask(c *gin.Context) {
 	idParam := c.Param("id")
 	var pguuid pgtype.UUID
@@ -37,6 +45,16 @@ func (s *Server) GetTask(c *gin.Context) {
 	c.JSON(http.StatusAccepted, response)
 }
 
+// @Summary Create a new task
+// @Description Create a task with one-off or cron trigger
+// @Tags Tasks
+// @Accept json
+// @Produce json
+// @Param task body entity.CreateTaskReq true "Task data"
+// @Success 201 {object} entity.TaskResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tasks [post]
 func (s *Server) CreateTask(c *gin.Context) {
 	var req entity.CreateTaskReq
 
@@ -49,6 +67,7 @@ func (s *Server) CreateTask(c *gin.Context) {
 	dateTime, err := StringToTimestamptz(req.Trigger.DateTime)
 	cron := StringToPgText(req.Trigger.Cron)
 	reqHeaders, _ := json.Marshal(req.Action.Headers)
+	reqPayload, _ := json.Marshal(req.Action.Payload)
 
 	var nextRun pgtype.Timestamptz
 
@@ -68,7 +87,7 @@ func (s *Server) CreateTask(c *gin.Context) {
 		ActionMethod:    req.Action.Method,
 		ActionUrl:       req.Action.URL,
 		ActionHeaders:   reqHeaders,
-		ActionPayload:   req.Action.Payload,
+		ActionPayload:   reqPayload,
 		Status:          "scheduled",
 		NextRun:         nextRun,
 	})
@@ -115,6 +134,15 @@ func (s *Server) CreateTask(c *gin.Context) {
 
 }
 
+// @Summary List tasks
+// @Description List all tasks with optional status filter
+// @Tags Tasks
+// @Param page query int false "Page number"
+// @Param size query int false "Page size"
+// @Param status query string false "Task status"
+// @Success 200 {object} entity.ListTasksResponse
+// @Failure 500 {object} map[string]string
+// @Router /tasks [get]
 func (s *Server) ListTasks(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
@@ -149,6 +177,14 @@ func (s *Server) ListTasks(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// @Summary Cancel a task
+// @Description Cancel a scheduled task by ID
+// @Tags Tasks
+// @Param id path string true "Task ID"
+// @Success 200 {object} entity.TaskResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tasks/{id}/cancel [delete]
 func (s *Server) CancelTask(c *gin.Context) {
 	idParam := c.Param("id")
 	var pguuid pgtype.UUID
@@ -172,6 +208,15 @@ func (s *Server) CancelTask(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
+
+// @Summary List task results by task ID
+// @Description Get results of a specific task
+// @Tags TaskResults
+// @Param id path string true "Task ID"
+// @Success 200 {object} map[string][]entity.TaskResultResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tasks/{id}/results [get]
 func (s *Server) ListTaskResults(c *gin.Context) {
 	idParam := c.Param("id")
 	var pguuid pgtype.UUID
@@ -200,6 +245,17 @@ func (s *Server) ListTaskResults(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"results": response})
 }
 
+// @Summary Update a task
+// @Description Update a task by ID
+// @Tags Tasks
+// @Accept json
+// @Produce json
+// @Param id path string true "Task ID"
+// @Param task body entity.UpdateTaskRequest true "Task data"
+// @Success 200 {object} entity.TaskResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tasks/{id} [put]
 func (s *Server) UpdateTask(c *gin.Context) {
 	idParam := c.Param("id")
 	var pguuid pgtype.UUID
@@ -320,6 +376,12 @@ func (s *Server) UpdateTask(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// @Summary List all task results
+// @Description Returns results for all tasks
+// @Tags TaskResults
+// @Success 200 {object} map[string][]entity.TaskResultResponse
+// @Failure 500 {object} map[string]string
+// @Router /results [get]
 func (s *Server) ListAllTasksResults(c *gin.Context) {
 	results, err := s.DB.ListAllTaskResults(c)
 	if err != nil {
